@@ -1,6 +1,6 @@
 # Hut availability 
 
-Fetches alpine hut bed availability from the [hut-reservation.org](https://www.hut-reservation.org) REST API. Outputs a wide-format table (huts as rows, dates as columns) and optionally to a CSV file.
+Fetches mountain hut bed availability from the [hut-reservation.org](https://www.hut-reservation.org) REST API. Only huts reservable through hut-reservation.org are available; countries included: Switzerland, Austria, Italy, Germany, Liechtenstein. Outputs a wide-format table (huts as rows, dates as columns) and optionally to a CSV file.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ python hrs_tool.py [--from_date DD.MM.YYYY] [--to_date DD.MM.YYYY] [--huts NAME 
 ### Flags
 
 | Flag | Description |
-|------|-------------|
+|---------|-------------|
 | `--from_date` | Start date (inclusive), format `DD.MM.YYYY` (default: today) |
 | `--to_date` | End date (inclusive), format `DD.MM.YYYY` (default: today + 7 days) |
 | `--huts` | One or more partial hut name(s) to query. |
@@ -51,3 +51,6 @@ Cabane des Vignettes CAS     4     0     0     0     0    21    13     5     0  
 
 Saved to output/availability_20260414_20260427_308-10-281-6-226.csv
 ```
+
+## Troubleshooting 
+If a hut is not found, try writing it out in full. If it's not available on [hut-reservation.org](https://www.hut-reservation.org) at all, remove it from the list of huts to query. 
