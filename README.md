@@ -1,2 +1,53 @@
 # hut_availability
-tool to check hut availability
+
+Fetches Alpine hut bed availability from [alpsonline.org](https://www.alpsonline.org) via the [hut-reservation.org](https://www.hut-reservation.org) REST API. Outputs a wide-format table (huts as rows, dates as columns) to stdout and optionally to a CSV file.
+
+## Requirements
+
+```
+pip install requests pandas
+```
+
+## Usage
+
+```
+python hrs_tool.py [--from_date DD.MM.YYYY] [--to_date DD.MM.YYYY] [--huts NAME ...] [--no-csv]
+```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--from_date` | today | Start date (inclusive), format `DD.MM.YYYY` |
+| `--to_date` | today + 7 days | End date (inclusive), format `DD.MM.YYYY` |
+| `--huts` | Haute Route huts | One or more partial hut name(s) to query. Case-insensitive, umlaut-tolerant (e.g. `schonbiel` or `schoenbiel` both match `Schönbielhütte SAC`). Quotes required for names with spaces. |
+| `--csv` / `--no-csv` | `--csv` | Write results to `output/availability_<from>_<to>_<huts>.csv`. The output directory is created automatically. |
+
+The default huts are some on the Haute Route: Dorée, Vignettes, Dix, Trient, Valsorey, Chanrion.
+
+## Example
+
+```
+$ python hrs_tool.py --from_date 14.04.2026 --to_date 27.04.2026 --huts schonbiel dix trient "monte rosa" vignettes
+Resolving huts (5):
+  Schönbielhütte SAC (308)
+  Cabane des Dix CAS (10)
+  Cabane du Trient CAS (281)
+  Monte Rosa Hütte SAC (6)
+  Cabane des Vignettes CAS (226)
+Fetching availability:
+  Schönbielhütte SAC: done
+  Cabane des Dix CAS: done
+  Cabane du Trient CAS: done
+  Monte Rosa Hütte SAC: done
+  Cabane des Vignettes CAS: done
+                          14/4  15/4  16/4  17/4  18/4  19/4  20/4  21/4  22/4  23/4  24/4  25/4  26/4  27/4
+Hut                                                                                                         
+Schönbielhütte SAC           4    12     6     0     0     0     0    20     0    34    26     7    29    26
+Cabane des Dix CAS           0     0     0     0     0     4    26    31     7    45    22     0    53    53
+Cabane du Trient CAS        68    67    67    48     0    60    51    77    71    73    77    35    68    84
+Monte Rosa Hütte SAC         0     0     0     0     0     0     0     0     0     1     0     0     0     0
+Cabane des Vignettes CAS     4     0     0     0     0    21    13     5     0     3     0     1    49    65
+
+Saved to output/availability_20260414_20260427_308-10-281-6-226.csv
+```

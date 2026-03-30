@@ -22,7 +22,10 @@ def load_huts_list():
 
 
 def normalize(s):
-    return s.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
+    s = s.lower()
+    s = s.replace("ä", "a").replace("ö", "o").replace("ü", "u")
+    s = s.replace("ae", "a").replace("oe", "o").replace("ue", "u")
+    return s
 
 
 def resolve_huts(names):
@@ -48,13 +51,14 @@ parser = argparse.ArgumentParser(description="Check Alpine hut bed availability.
 parser.add_argument("--from_date", default=today.strftime("%d.%m.%Y"), help="Start date DD.MM.YYYY (inclusive, default: today)")
 parser.add_argument("--to_date",   default=(today + timedelta(days=7)).strftime("%d.%m.%Y"), help="End date DD.MM.YYYY (inclusive, default: today + 7 days)")
 parser.add_argument("--huts", nargs="+", default=DEFAULT_HUT_NAMES, metavar="NAME", help="Partial hut name(s) to query (default: Haute Route huts)")
+parser.add_argument("--csv", default=True, action=argparse.BooleanOptionalAction, help="Write results to a CSV file in output/ (default: true)")
 args = parser.parse_args()
 
 START_DATE = datetime.strptime(args.from_date, "%d.%m.%Y")
 END_DATE   = datetime.strptime(args.to_date,   "%d.%m.%Y")
 
-print("Resolving huts:")
 HUTS = resolve_huts(args.huts)
+print(f"Resolving huts ({len(HUTS)}):")
 for hut_id, hut_name in HUTS:
     print(f"  {hut_name} ({hut_id})")
 
@@ -88,6 +92,7 @@ session = make_session()
 date_range = pd.date_range(START_DATE, END_DATE)
 col_labels = [d.strftime("%-d/%-m") for d in date_range]
 
+print("Fetching availability:")
 rows = []
 for hut_id, hut_name in HUTS:
     availability = get_availability(session, hut_id)
@@ -98,5 +103,12 @@ for hut_id, hut_name in HUTS:
     print(f"  {hut_name}: done")
 
 df = pd.DataFrame(rows).set_index("Hut")
-df.to_csv("output/availability.csv")
 print(df.to_string())
+
+if args.csv:
+    os.makedirs("output", exist_ok=True)
+    hut_slug = "-".join(str(hut_id) for hut_id, _ in HUTS)
+    filename = f"availability_{START_DATE.strftime('%Y%m%d')}_{END_DATE.strftime('%Y%m%d')}_{hut_slug}.csv"
+    csv_path = os.path.join("output", filename)
+    df.to_csv(csv_path)
+    print(f"\nSaved to {csv_path}")
