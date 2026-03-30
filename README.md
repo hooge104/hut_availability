@@ -2,9 +2,11 @@
 
 Fetches mountain hut bed availability from the [hut-reservation.org](https://www.hut-reservation.org) REST API. Only huts reservable through hut-reservation.org are available; countries included: Switzerland, Austria, Italy, Germany, Liechtenstein. Outputs a wide-format table (huts as rows, dates as columns) and optionally to a CSV file.
 
-## Requirements
+## Setup
 
 ```
+git clone https://github.com/hooge104/hut_availability
+cd hut_availability
 pip install requests pandas
 ```
 
