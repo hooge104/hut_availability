@@ -8,107 +8,142 @@ import os
 import requests
 import pandas as pd
 
-BASE = "https://www.hut-reservation.org"
-HUTS_LIST_FILE = os.path.join(os.path.dirname(__file__), "hutsList.json")
+from utils import BASE, COUNTRY_CODES, COUNTRY_DISPLAY
+from utils import normalize, resolve_huts, make_session, resolve_huts_by_country
 
-DEFAULT_HUT_NAMES = ["doree", "vignettes", "dix", "trient", "valsorey", "chanrion"]
-
-
-def load_huts_list():
-    if not os.path.exists(HUTS_LIST_FILE):
-        return []
-    with open(HUTS_LIST_FILE) as f:
-        return json.load(f)
+DEFAULT_HUT_NAMES = None    # use all huts in the list
+# DEFAULT_HUT_NAMES = ["doree", "vignettes", "dix", "trient", "valsorey", "chanrion"]
 
 
-def normalize(s):
-    s = s.lower()
-    s = s.replace("ä", "a").replace("ö", "o").replace("ü", "u")
-    s = s.replace("ae", "a").replace("oe", "o").replace("ue", "u")
-    return s
-
-
-def resolve_huts(names):
-    """Resolve partial hut name strings to (hut_id, hut_name) tuples."""
-    all_huts = load_huts_list()
-    resolved = []
-    for query in names:
-        matches = [h for h in all_huts if normalize(query) in normalize(h["hutName"])]
-        if not matches:
-            print(f"  ERROR: no hut found matching '{query}'")
-            raise SystemExit(1)
-        if len(matches) > 1:
-            options = ", ".join(f"{h['hutName']} ({h['hutId']})" for h in matches[:5])
-            print(f"  ERROR: '{query}' is ambiguous: {options}")
-            raise SystemExit(1)
-        resolved.append((matches[0]["hutId"], matches[0]["hutName"]))
-    return resolved
-
-
+# ---------------------------------------------------------------------------
+# CLI argument parsing and hut selection
+# ---------------------------------------------------------------------------
+ 
 today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 
 parser = argparse.ArgumentParser(description="Check Alpine hut bed availability.")
-parser.add_argument("--from_date", default=today.strftime("%d.%m.%Y"), help="Start date DD.MM.YYYY (inclusive, default: today)")
-parser.add_argument("--to_date",   default=(today + timedelta(days=7)).strftime("%d.%m.%Y"), help="End date DD.MM.YYYY (inclusive, default: today + 7 days)")
-parser.add_argument("--huts", nargs="+", default=DEFAULT_HUT_NAMES, metavar="NAME", help="Partial hut name(s) to query (default: Haute Route huts)")
-parser.add_argument("--csv", default=True, action=argparse.BooleanOptionalAction, help="Write results to a CSV file in output/ (default: true)")
+parser.add_argument("--from_date", default=today.strftime("%d.%m.%Y"),
+                    help="Start date DD.MM.YYYY (inclusive, default: today)")
+parser.add_argument("--to_date",   default=(today + timedelta(days=7)).strftime("%d.%m.%Y"),
+                    help="End date DD.MM.YYYY (inclusive, default: today + 7 days)")
+ 
+# --- Hut selection: explicit names OR country/region/altitude discovery
+hut_group = parser.add_mutually_exclusive_group()
+hut_group.add_argument("--huts", nargs="+", metavar="NAME",
+                        help="Partial hut name(s) to query")
+hut_group.add_argument("--country", metavar="COUNTRY",
+                        help=("Discover all available huts for a country "
+                              "(e.g. 'Switzerland', 'France', 'Italy'). "
+                              "For Switzerland, swisstopo is queried automatically."))
+ 
+parser.add_argument("--region", metavar="REGION",
+                    help=("Sub-filter by region / canton when using --country. "
+                          "For Switzerland: 'valais', 'bernese_oberland', "
+                          "'graubunden', 'ticino', 'uri', 'vaud', … "
+                          "or a raw canton abbreviation (e.g. 'vs')."))
+parser.add_argument("--altitude_min", type=float, metavar="M",
+                    help="Minimum hut altitude in metres (Switzerland only, "
+                         "requires --country CH/Switzerland)")
+parser.add_argument("--altitude_max", type=float, metavar="M",
+                    help="Maximum hut altitude in metres (Switzerland only)")
+parser.add_argument("--csv", default=True, action=argparse.BooleanOptionalAction,
+                    help="Write results to a CSV file in output/ (default: true)")
+
 args = parser.parse_args()
+
+if (args.region or args.altitude_min or args.altitude_max) and not args.country:
+    parser.error("--region / --altitude_min / --altitude_max require --country")
 
 START_DATE = datetime.strptime(args.from_date, "%d.%m.%Y")
 END_DATE   = datetime.strptime(args.to_date,   "%d.%m.%Y")
 
-HUTS = resolve_huts(args.huts)
-print(f"Resolving huts ({len(HUTS)}):")
-for hut_id, hut_name in HUTS:
-    print(f"  {hut_name} ({hut_id})")
-
-
-def make_session():
-    session = requests.Session()
-    session.headers.update({"User-Agent": "Mozilla/5.0"})
-    session.get(f"{BASE}/api/v1/csrf")
-    csrf_token = session.cookies.get("XSRF-TOKEN")
-    session.headers.update({"X-XSRF-TOKEN": csrf_token})
-    return session
-
-
-
-def get_availability(session, hut_id):
-    """Returns dict of {date: free_beds} for the hut."""
-    r = session.get(
-        f"{BASE}/api/v1/reservation/getHutAvailability",
-        params={"hutId": hut_id, "step": "WIZARD"},
+if args.huts:
+    print(f"Resolving huts by name ({len(args.huts)} query/queries):")
+    HUTS = resolve_huts(args.huts)
+elif args.country:
+    country_code = COUNTRY_CODES.get(normalize(args.country), args.country.upper())
+    country_display = COUNTRY_DISPLAY.get(country_code, country_code)
+    print(f"Discovering {country_display} huts'"
+          + (f", region='{args.region}'" if args.region else "")
+          + (f", alt≥{args.altitude_min}m" if args.altitude_min else "")
+          + (f", alt≤{args.altitude_max}m" if args.altitude_max else "")
+          + " …")
+    HUTS = resolve_huts_by_country(
+        country=args.country,
+        region=args.region,
+        altitude_min=args.altitude_min,
+        altitude_max=args.altitude_max,
     )
-    r.raise_for_status()
-    result = {}
-    for entry in r.json():
-        date = datetime.fromisoformat(entry["date"].replace("Z", "+00:00")).replace(tzinfo=None)
-        result[date] = entry["freeBeds"]
-    return result
+    if not HUTS:
+        print("ERROR: no matching huts found in hutsList.json for these criteria.")
+        raise SystemExit(1)
+else:
+    parser.error("Provide either --huts NAME [NAME …] or --country COUNTRY")
+ 
+print(f"Resolved {len(HUTS)} hut(s):")
+# for hut_id, hut_name in HUTS:
+#     print(f"  {hut_name} ({hut_id})")
+ 
 
-
-session = make_session()
+# ---------------------------------------------------------------------------
+# session & availability fetch
+# ---------------------------------------------------------------------------
 
 date_range = pd.date_range(START_DATE, END_DATE)
 col_labels = [d.strftime("%-d/%-m") for d in date_range]
 
+session = make_session()
+
 print("Fetching availability:")
 rows = []
 for hut_id, hut_name in HUTS:
-    availability = get_availability(session, hut_id)
+    r = session.get(
+        f"{BASE}/api/v1/reservation/getHutAvailability",
+        params={"hutId": hut_id, "step": "WIZARD"},
+    )
+    if r.status_code == 403:
+        # print(f"  {hut_name}: no availability / closed (403)")
+        row = {"Hut": hut_name}
+        for label in col_labels:
+            row[label] = 0
+        rows.append(row)
+        continue
+    r.raise_for_status()
+    availability = {}
+    for entry in r.json():
+        date = datetime.fromisoformat(entry["date"].replace("Z", "+00:00")).replace(tzinfo=None)
+        availability[date] = entry["freeBeds"]
     row = {"Hut": hut_name}
     for date, label in zip(date_range, col_labels):
         row[label] = availability.get(date.to_pydatetime(), "")
     rows.append(row)
     print(f"  {hut_name}: done")
 
+if not rows:
+    print("ERROR: no availability data fetched.")
+    raise SystemExit(1)
+
+rows.sort(key=lambda r: all(r[l] == 0 for l in col_labels))
+
 df = pd.DataFrame(rows).set_index("Hut")
-print(df.to_string())
+df = df.fillna(0).astype(int)
+print("\n" + df.to_string())
+
+if args.huts:
+    slug = "-".join(normalize(n) for n in args.huts)
+elif args.country:
+    slug = normalize(args.country)
+    if args.region:
+        slug += f"_{normalize(args.region)}"
+    if args.altitude_min:
+        slug += f"_min{int(args.altitude_min)}m"
+    if args.altitude_max:
+        slug += f"_max{int(args.altitude_max)}m"
 
 if args.csv:
     os.makedirs("output", exist_ok=True)
-    hut_slug = "-".join(str(hut_id) for hut_id, _ in HUTS)
-    filename = f"availability_{START_DATE.strftime('%Y%m%d')}_{END_DATE.strftime('%Y%m%d')}_{hut_slug}.csv"
+    filename = f"availability_{START_DATE.strftime('%Y%m%d')}_{END_DATE.strftime('%Y%m%d')}_{slug}.csv"
     csv_path = os.path.join("output", filename)
     df.to_csv(csv_path)
     print(f"\nSaved to {csv_path}")
+
