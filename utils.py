@@ -5,7 +5,7 @@
 import os
 import re
 import json
-from networkx import hits
+from difflib import get_close_matches
 import requests
 
 BASE = "https://www.hut-reservation.org"
@@ -91,7 +91,17 @@ def resolve_huts(names):
     all_huts = _load_huts_list()
     resolved = []
     for query in names:
-        matches = [h for h in all_huts if normalize(query) in normalize(h["hutName"])]
+        query_norm = normalize(query)
+        matches = [h for h in all_huts if query_norm in normalize(h["hutName"])]
+        if not matches:
+            for h in all_huts:
+                words = normalize(h["hutName"]).split()
+                if get_close_matches(query_norm, words, n=1, cutoff=0.7):
+                    matches.append(h)
+            if matches:
+                print(f"  INFO: '{query}' not found exactly, fuzzy-matched to: "
+                      + ", ".join(h['hutName'] for h in matches))
+
         if not matches:
             print(f"  ERROR: no hut found matching '{query}'")
             raise SystemExit(1)
