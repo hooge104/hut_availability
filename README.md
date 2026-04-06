@@ -28,11 +28,10 @@ python hrs_tool.py [--from_date DD.MM.YYYY] [--to_date DD.MM.YYYY] [--huts NAME 
 | `--altitude_min` | Minimum altitude at which the hut should be located (optional) |
 | `--altitude_max` | Minimum altitude at which the hut should be located (optional) |
 
-Use either the argument(s) `--country` or `--huts`. \\
-Arguments `--region`, `--altitude_min` and `--altitude_max` are optional and currently only available for CH.\\
-Regions can be individual cantons, or `central` (LU, OW, NW, SZ, UR, ZG), `east` (AI, AR, GL, GR, SG) and `west` (FR, JU, VD, VS). \\
-If used, `--huts` should always be last.
-Hut names can be partial; e.g. `vignettes` will match `Cabane des Vignettes CAS`. Name look up is case-insensitive and umlaut-tolerant (e.g. `schonbiel` or `schoenbiel` both match `Schönbielhütte SAC`). Quotes required for names with spaces (e.g. `"monte rosa"`). 
+Use either the argument(s) `--country` or `--huts`. Arguments `--region`, `--altitude_min` and `--altitude_max` are optional and currently only available for CH.
+Regions can be individual cantons, or `central` (LU, OW, NW, SZ, UR, ZG), `east` (AI, AR, GL, GR, SG) and `west` (FR, JU, VD, VS). 
+
+If used, `--huts` should always be last. Hut names can be partial; e.g. `vignettes` will match `Cabane des Vignettes CAS`. Name look up is case-insensitive and umlaut-tolerant (e.g. `schonbiel` or `schoenbiel` both match `Schönbielhütte SAC`). Quotes required for names with spaces (e.g. `"monte rosa"`). 
 
 
 ## Examples
