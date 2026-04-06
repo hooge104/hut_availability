@@ -25,6 +25,7 @@ python hrs_tool.py [--from_date DD.MM.YYYY] [--to_date DD.MM.YYYY] [--huts NAME 
 | `--huts` | One or more partial hut name(s) to query. |
 | `--csv` / `--no-csv` | Write results to `output/availability_<from>_<to>_<huts>.csv`. The output directory is created automatically (default: `--csv`) | 
 | `--country` | Country in which hut should be located |
+| `--region` | Region in which hut should be located |
 | `--altitude_min` | Minimum altitude at which the hut should be located (optional) |
 | `--altitude_max` | Minimum altitude at which the hut should be located (optional) |
 
