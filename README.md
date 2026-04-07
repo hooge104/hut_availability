@@ -24,19 +24,23 @@ python hrs_tool.py [--from_date DD.MM.YYYY] [--to_date DD.MM.YYYY] [--huts NAME 
 | `--to_date` | End date (inclusive), format `DD.MM.YYYY` (default: today + 7 days) |
 | `--huts` | One or more partial hut name(s) to query. |
 | `--csv` / `--no-csv` | Write results to `output/availability_<from>_<to>_<huts>.csv`. The output directory is created automatically (default: `--csv`) | 
+| `--country` | Country in which hut should be located |
+| `--region` | Region in which hut should be located |
+| `--altitude_min` | Minimum altitude at which the hut should be located (optional) |
+| `--altitude_max` | Minimum altitude at which the hut should be located (optional) |
 
-Hut names can be partial; e.g. `vignettes` will match `Cabane des Vignettes CAS`. Name look up is case-insensitive and umlaut-tolerant (e.g. `schonbiel` or `schoenbiel` both match `Schönbielhütte SAC`). Quotes required for names with spaces (e.g. `"monte rosa"`). The default huts are some on the Haute Route: Dorée, Vignettes, Dix, Trient, Valsorey, Chanrion.
+Use either the argument(s) `--country` or `--huts`. Arguments `--region`, `--altitude_min` and `--altitude_max` are optional and currently only available for CH.
+Regions can be individual cantons, or `central` (LU, OW, NW, SZ, UR, ZG), `east` (AI, AR, GL, GR, SG) and `west` (FR, JU, VD, VS). 
 
-## Example
+If used, `--huts` should always be last. Hut names can be partial; e.g. `vignettes` will match `Cabane des Vignettes CAS`. Name look up is case-insensitive and umlaut-tolerant (e.g. `schonbiel` or `schoenbiel` both match `Schönbielhütte SAC`). Quotes required for names with spaces (e.g. `"monte rosa"`). 
+
+
+## Examples
 
 ```
 $ python hrs_tool.py --from_date 14.04.2026 --to_date 27.04.2026 --huts schonbiel dix trient "monte rosa" vignettes
-Resolving huts (5):
-  Schönbielhütte SAC (308)
-  Cabane des Dix CAS (10)
-  Cabane du Trient CAS (281)
-  Monte Rosa Hütte SAC (6)
-  Cabane des Vignettes CAS (226)
+Resolving huts by name (5):
+Resolved 5 hut(s)
 Fetching availability:
   Schönbielhütte SAC: done
   Cabane des Dix CAS: done
@@ -45,13 +49,48 @@ Fetching availability:
   Cabane des Vignettes CAS: done
                           14/4  15/4  16/4  17/4  18/4  19/4  20/4  21/4  22/4  23/4  24/4  25/4  26/4  27/4
 Hut                                                                                                         
-Schönbielhütte SAC           4    12     6     0     0     0     0    20     0    34    26     7    29    26
-Cabane des Dix CAS           0     0     0     0     0     4    26    31     7    45    22     0    53    53
-Cabane du Trient CAS        68    67    67    48     0    60    51    77    71    73    77    35    68    84
-Monte Rosa Hütte SAC         0     0     0     0     0     0     0     0     0     1     0     0     0     0
-Cabane des Vignettes CAS     4     0     0     0     0    21    13     5     0     3     0     1    49    65
+Schönbielhütte SAC           0     0     0     0     0     0     8    20     5    34    26     8    25    26
+Cabane des Dix CAS           5     7     0     0     0     0    26    31    14    57    25     4    51    50
+Cabane du Trient CAS        73    72    72    52     0    65    56    82    71    79    80    36    72    89
+Cabane des Vignettes CAS     6     5    12     0     0    17    16     3     0     7     0     0    49    64
+Monte Rosa Hütte SAC         0     0     0     0     0     0     0     0     0     0     0     0     0     0
 
 Saved to output/availability_20260414_20260427_308-10-281-6-226.csv
+```
+```
+python hrs_tool.py --from_date 14.04.2026 --to_date 16.04.2026 --country ch --region west --altitude_min 2700
+Discovering Swiss huts', region='west', alt≥2700.0m …
+  Using swisstopo API to find Swiss huts …
+  swisstopo found 27 candidate hut location(s):
+Resolved 11 hut(s):
+Fetching availability:
+  Cabane des Dix CAS: done
+  Cabane de l'A Neuve CAS: done
+  Cabane Arpitettaz CAS: done
+  Cabane de la Dent Blanche CAS: done
+  Bivouac de l'Envers des Dorées: done
+  Cresta-Biwak SAC: done
+  Fusshornbiwak: done
+  Aarbiwak SAC: done
+  Mischabeljochbiwak SAC: done
+  Arbenbiwak SAC: done
+  Schalijochbiwak SAC: done
+
+                                14/4  15/4  16/4
+Hut                                             
+Cabane des Dix CAS                 5     7     0
+Cabane de l'A Neuve CAS            0     0     0
+Cabane Arpitettaz CAS              0     3     1
+Cabane de la Dent Blanche CAS      0     0     0
+Bivouac de l'Envers des Dorées    13    18    13
+Cresta-Biwak SAC                   6     6     6
+Fusshornbiwak                      8     8     8
+Aarbiwak SAC                      10     8     7
+Mischabeljochbiwak SAC            24    24    24
+Arbenbiwak SAC                    15    15    12
+Schalijochbiwak SAC                8     8     8
+
+Saved to output/availability_20260414_20260416_ch_west_min2700m.csv
 ```
 
 ## Troubleshooting 
